@@ -18,6 +18,7 @@ const seg = (x, a, b) => clamp((x - a) / (b - a));
 const lerp2 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t)];
 export const TRACK = {};          // screen points the film assembly needs (iris centre), in film coordinates
 
+function windUp() { const p = pose('whirl'); p.lean = -.18; p.L = { hip: .4, abd: .12, knee: .55, ankle: .2 }; p.R = { hip: -.05, abd: .1, knee: .5, ankle: .2 }; return p; }
 // keyframed poses / numbers (never switch poses in an `if`)
 export function poseAt(b, keys, ease = ss) {
   const val = v => typeof v === 'function' ? v(b) : v;
@@ -33,6 +34,7 @@ export function numAt(b, keys, ease = ss) {
 const withExpr = (p, e) => { p.expr = { ...p.expr, ...e }; return p; };
 // camera: zoom z about the film point (fx, fy), applied to both layers
 function cam(ctx, z, fx, fy) { for (const c of [ctx.g, ctx.m]) { c.translate(W / 2, H / 2); c.scale(z, z); c.translate(-fx, -fy); } }
+function shake(ctx, amp, t) { if (amp <= 0) return; const dx = Math.sin(t * 61) * amp + Math.sin(t * 37) * amp * .6, dy = Math.cos(t * 53) * amp * .8; for (const c of [ctx.g, ctx.m]) c.translate(dx, dy); }
 const toFilm = (g, p) => { const m = g.getTransform(); return [m.a * p[0] + m.c * p[1] + m.e, m.b * p[0] + m.d * p[1] + m.f]; };
 function fig(ctx, ch, opt) { return drawFigure(ctx.g, ch, opt); }
 
@@ -47,6 +49,7 @@ function ranchMorning(g, o = {}) {
 // ============ OPEN · cold open: Josie ropes herself (full shot) ============
 export function open(ctx, b, t) {
   const g = ctx.g;
+  { const k = ss(seg(b, 4, 6.5)) * (1 - ss(seg(b, 10.5, 13))); cam(ctx, lerp(1, 1.4, k), lerp(720, 640, k), lerp(540, 640, k)); }
   S.sky(g, W, 560, 7, .93, { clouds: 4 });
   S.range(g, -60, W + 60, 520, 170, 1.3, .48, { n: 12 });
   S.hills(g, -40, W + 40, 540, 30, 2, .6, { depth: 80 });
@@ -62,7 +65,8 @@ export function open(ctx, b, t) {
   // Josie: whirl too fast → loop flies straight up → drops over her → she sits down hard
   const jp = poseAt(b, [[0, pose('whirl')], [4.2, pose('whirl')], [4.5, pose('throw')], [5.0, pose('tangled')], [6.2, pose('tangled')], [6.9, pose('sit')]]);
   if (b > 5 && b < 6.4) jp.lean = Math.sin((b - 5) * 9) * .06 * (6.4 - b);           // the wobble before the sit
-  const opt = { x: 560, ground: 965, scale: 92, yaw: 28, pose: jp, t };
+  const bounce = b > 7 && b < 7.9 ? Math.abs(Math.sin(seg(b, 7, 7.9) * Math.PI * 2)) * 22 * (1 - seg(b, 7, 7.9)) : 0;
+  const opt = { x: 560, ground: 965 - bounce, scale: 92, yaw: 28, pose: jp, t };
   const F = figAt(JOSIE, opt), hand = F.hand('R'), hl = F.hand('L');
   const chest = lerp2(F.neck, F.hip, .45);
   let L = null;           // {c, rx, ry} when the loop is around her
@@ -146,7 +150,7 @@ export function gate(ctx, b, t) {
   const hop = seg(b, 15, 16);
   const groundX = seat[0] + 40;
   let jx = lerp(seat[0], groundX, hop), jyP = seat[1] - 6;
-  const yawJ = numAt(b, [[0, 18], [15, 18], [16, 10], [17, 10], [17.5, 165], [18, 165], [18.08, 0]], x => x < 1 ? ss(x) : 1);
+  const yawJ = numAt(b, [[0, 18], [15, 18], [16, 10], [16.4, 10], [16.7, 125], [17.0, 125], [17.3, 10], [17.6, 10], [17.75, 170], [18, 170], [18.08, 0]], x => x < 1 ? ss(x) : 1);
   const jp = poseAt(b, [[0, pose('perch')], [15, pose('perch')], [15.6, pose('take')], [16, pose('stand')], [17, pose('stand')], [18, pose('stand')], [18.08, pose('take')], [21, pose('take')]], x => clamp(x));
   const jump = b > 18 && b < 18.6 ? Math.sin(seg(b, 18, 18.6) * Math.PI) * 40 : 0;
   const opt = hop < 1 ? { x: jx, y: lerp(jyP, jyP - 60, Math.sin(hop * Math.PI)) + hop * 0, scale: 80, yaw: yawJ, pose: jp, t } : { x: jx, ground: 985 - jump, scale: 80, yaw: yawJ, pose: jp, t };
@@ -198,6 +202,7 @@ export function chase(ctx, b, t) {
 // ============ BISON · the bull (locked wide, then a half iris on Josie) ============
 export function bison(ctx, b, t) {
   const g = ctx.g;
+  { const k = ss(seg(b, 9, 11.5)) * (1 - ss(seg(b, 17, 19.5))); cam(ctx, lerp(1, 1.5, k), lerp(720, 720, k), lerp(540, 640, k)); }
   S.sky(g, W, 560, 15, .93, { clouds: 4 });
   S.range(g, -60, W + 60, 520, 200, 5.7, .46, { n: 14 });
   S.hills(g, -40, W + 40, 540, 50, 8, .6, { depth: 100 });
@@ -271,10 +276,10 @@ export function basin(ctx, b, t) {
 }
 export function crack(ctx, b, t, sec = 'CRACK') {
   const g = ctx.g, sil = sec === 'SIL';
-  cam(ctx, 1.22, 760, 640);
+  { const z = sil ? lerp(1.22, 1.75, ss(seg(b, 0, 2))) : 1.22; cam(ctx, z, sil ? lerp(760, 470, ss(seg(b, 0, 2))) : 760, sil ? lerp(640, 690, ss(seg(b, 0, 2))) : 640); }
   const k = sil ? 1 : seg(b, 1, 2.5), rumble = sil ? .3 : seg(b, 1, 3) * .8;
   basinSet(g, t, { crack: k, isleTilt: k * .05, rumble, coneSteam: 1 + rumble });
-  if (!sil) S.eruption(g, CONE[0], CONE[1] - 120, 300, Math.max(0, Math.sin(seg(b, 2, 9) * Math.PI * 3)) * .18 * rumble, t, 9);
+  if (!sil) for (let i = 0; i < 3; i++) S.steam(g, CONE[0] + (i - 1) * 30, CONE[1] - 130, 50 + 30 * rumble, t * 1.8 + i * .7, 60 + i, { a: .9 * rumble, rise: 1.6, n: 5 });
   const tremble = Math.sin(t * 40) * 2 * (k > 0 ? 1 : 0);
   drawCalf(g, ISLE[0] + tremble, ISLE[1] + k * 4, 38, 0, 0, { f: -1, head: -.35, ears: -.4, t, crouch: .4 * k, roll: k * .05 });
   const jb = sil ? 99 : b;
@@ -291,19 +296,20 @@ export const sil = (ctx, b, t) => crack(ctx, b, t, 'SIL');
 export function throwShot(ctx, b, t) {
   const g = ctx.g;
   cam(ctx, 1.0, 720, 540);
-  const erupt = ss(seg(b, 8, 10.2));
-  basinSet(g, t, { crack: 1, isleTilt: .05, rumble: .4 + erupt, coneSteam: 1.5 + erupt * 2, skyV: .6 });
+  const pre = seg(b, 6.5, 8), erupt = eo(seg(b, 8, 9.1));
+  shake(ctx, (pre * 3 + (b >= 8 ? 9 * (1 - seg(b, 8, 12)) : 0)), t);
+  basinSet(g, t, { crack: 1, isleTilt: .05, rumble: .4 + pre + erupt, coneSteam: 1.5 + pre * 1.5 + erupt * 2, skyV: .6 });
   // the calf hauled across the crust toward her
   const hk = ss(seg(b, 6.5, 9.6));
   const calfX = lerp(ISLE[0], 520, hk), calfY = lerp(ISLE[1], 905, hk);
-  const jp = poseAt(b, [[0, pose('whirl')], [3.6, pose('whirl')], [4.3, pose('throw')], [6.2, pose('throw')], [6.8, pose('haul')], [9.8, pose('haul')], [11, withExpr(pose('stand'), EXPR.glad)]]);
+  const jp = poseAt(b, [[0, pose('whirl')], [3.2, pose('whirl')], [3.75, windUp()], [4.3, pose('throw')], [6.2, pose('throw')], [6.8, pose('haul')], [9.8, pose('haul')], [11, withExpr(pose('stand'), EXPR.glad)]]);
   const opt = { x: 330, ground: 910, scale: 70, yaw: 90, pose: jp, t };
   const F = figAt(JOSIE, opt), hand = F.hand('R'), hl = F.hand('L');
   // eruption behind everything near
-  S.eruption(g, CONE[0], CONE[1] - 125, 900, erupt, t, 9);
+  S.eruption(g, CONE[0], CONE[1] - 125, 1150, erupt, t, 9, 1 + 1.2 * seg(b, 9, 16));
   const neck = [calfX - 38 * .75, calfY - 38 * 1.55];
   if (b >= 5.5) { const r = lerp(30, 17, eo(seg(b, 5.5, 6.3))); loop(ctx, neck[0], neck[1], r * .5, r, 'back', 2.8, .3); }
-  drawCalf(g, calfX, calfY, 38, hk > 0 && hk < 1 ? b * .8 : 0, 0, { f: -1, head: hk > 0 && hk < 1 ? -.1 : -.3, crouch: hk > 0 && hk < 1 ? .3 : 0, roll: hk > 0 && hk < 1 ? -.12 : 0, t, ears: -.3 });
+  drawCalf(g, calfX, calfY, 38, hk > 0 && hk < 1 ? b * .8 : 0, 0, { f: -1, tail: b > 10 ? Math.sin(t * 14) * .5 : 0, head: hk > 0 && hk < 1 ? -.1 : b > 10 ? .25 + Math.sin(t * 3) * .15 : -.3, crouch: hk > 0 && hk < 1 ? .3 : 0, roll: hk > 0 && hk < 1 ? -.12 : 0, t, ears: -.3 });
   fig(ctx, JOSIE, opt);
   if (b < 4) { const tw = twirl(ctx, hand, 78, (b * SEC.THROW.beat) * .62, { lift: 44, flat: .3, w: 3 }); line(ctx, tw.honda, hl, 26, 2.6); }   // slow and even
   else if (b < 5.5) flight(ctx, [hand[0] + 40, hand[1] - 40], neck, ss(seg(b, 4, 5.5)), 160, 78, 30, hand, { w: 3 });
@@ -315,6 +321,7 @@ export function throwShot(ctx, b, t) {
 export function home(ctx, b, t) {
   const g = ctx.g;
   S.sky(g, W, 600, 30, .9, { clouds: 6, top: .18 });
+  { const k = ss(seg(b, 12.5, 15)); cam(ctx, lerp(1, 1.55, k), lerp(720, 760, k), lerp(540, 640, k)); }
   S.sun(g, 1060, 470, 34);
   S.range(g, -60, W + 60, 540, 210, 2.6, .5, { n: 14 });
   S.hills(g, -40, W + 40, 560, 34, 4, .45, { depth: 120 });
@@ -329,6 +336,8 @@ export function home(ctx, b, t) {
   // Grandpa by the post
   const ap = poseAt(b, [[0, pose('amosStand')], [12, pose('amosStand')], [12.6, pose('amosTip')], [13.6, pose('amosTip')], [14.2, pose('amosStand')]]);
   if (b < 10.5) ap.headTurn = .1;
+  if (b >= 14.2) ap.nod = .08 + .12 * Math.sin(seg(b, 14.2, 15) * Math.PI);                       // a slow nod
+  if (b >= 15.8) { ap.lean = .1 + Math.sin(t * 22) * .025 * (1 - seg(b, 15.8, 17.5)); ap.expr = { ...ap.expr, smile: .7, open: .4 }; }   // a silent chuckle
   fig(ctx, AMOS, { x: 1070, ground: 930, scale: 60, yaw: -70, pose: ap, t });
   // Josie leads Biscuit in, ropes the post (slow, sure), tips her hat; it slides over her eyes
   const jx = numAt(b, [[0, -80], [6, 560]], x => clamp(x));
@@ -338,7 +347,7 @@ export function home(ctx, b, t) {
   const opt = { x: jx, ground: 935, scale: 64, yaw: 90, pose: jp, t };
   const F = figAt(JOSIE, opt), hand = F.hand('R'), hl = F.hand('L');
   const calfX = numAt(b, [[0, -260], [6.4, 330]], x => clamp(x));
-  drawCalf(g, calfX, 925, 40, b * .5, b < 6.4 ? 1 : 0, { f: 1, head: b < 6.4 ? 0 : -.4, t, ears: Math.sin(t * 2) * .2 });
+  drawCalf(g, calfX + (b > 7 ? 40 * ss(seg(b, 7, 9)) : 0), 925, 40, b * .5, b < 6.4 ? 1 : 0, { f: 1, head: b < 6.4 ? 0 : b > 9 ? .3 + Math.sin(t * 3) * .12 : -.4, tail: Math.sin(t * 9) * .4, t, ears: Math.sin(t * 2) * .2 });
   fig(ctx, JOSIE, opt);
   const top = [post[0], post[1] - postH];
   if (b < 6.4) line(ctx, hand, [calfX + 40 * .55, 925 - 40 * 1.5], 30, 2.6);           // the lead rope to the calf's neck

@@ -188,7 +188,7 @@ export function steam(g, x, y, scale, t, seed = 1, o = {}) {
   }
 }
 // the eruption: a column of white water and steam (k = 0..1 height reached, t = time for the billows)
-export function eruption(g, x, base, H, k, t, seed = 9) {
+export function eruption(g, x, base, H, k, t, seed = 9, spread = 1) {
   if (k <= 0) return;
   const top = base - H * k;
   // water column: a tapering bright core with ragged edges
@@ -199,8 +199,8 @@ export function eruption(g, x, base, H, k, t, seed = 9) {
   // billowing steam around and above the column: each billow a grey shadow underneath, a white crown above
   const bill = [];
   for (let i = 0; i < 30; i++) {
-    const u = rnd(i, seed), y = lerp(base - 40, top - H * .1, Math.pow(u, .8)), sway = Math.sin(t * .7 + i) * 24 + (rnd(i + 2, seed) - .5) * (90 + u * 240) * k;
-    bill.push({ x: x + sway + u * 120 * k, y: y + Math.sin(t * 1.3 + i) * 10, r: (70 + u * 230) * (.5 + .5 * k) * (.85 + .3 * rnd(i + 4, seed)) });
+    const u = rnd(i, seed), y = lerp(base - 40, top - H * .1, Math.pow(u, .8)), sway = Math.sin(t * .7 + i) * 24 + (rnd(i + 2, seed) - .5) * (90 + u * 240) * k * spread;
+    bill.push({ x: x + sway + u * 120 * k, y: y + Math.sin(t * 1.3 + i) * 10, r: (70 + u * 230) * k * (.6 + .4 * spread) * (.85 + .3 * rnd(i + 4, seed)) });
   }
   for (const q of bill) { const c = g.createRadialGradient(q.x + q.r * .18, q.y + q.r * .22, 0, q.x + q.r * .18, q.y + q.r * .22, q.r); c.addColorStop(0, grey(.64, .95)); c.addColorStop(.86, grey(.6, .9)); c.addColorStop(.95, grey(.58, .5)); c.addColorStop(1, grey(.58, 0)); g.fillStyle = c; g.beginPath(); g.arc(q.x + q.r * .18, q.y + q.r * .22, q.r, 0, 7); g.fill(); }
   for (const q of bill) { const c = g.createRadialGradient(q.x - q.r * .1, q.y - q.r * .14, 0, q.x - q.r * .1, q.y - q.r * .14, q.r * .86); c.addColorStop(0, grey(1, 1)); c.addColorStop(.84, grey(.97, 1)); c.addColorStop(.94, grey(.9, .6)); c.addColorStop(1, grey(.9, 0)); g.fillStyle = c; g.beginPath(); g.arc(q.x - q.r * .1, q.y - q.r * .14, q.r * .86, 0, 7); g.fill(); }

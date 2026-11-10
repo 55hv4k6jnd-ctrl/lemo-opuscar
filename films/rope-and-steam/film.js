@@ -51,7 +51,7 @@ export function renderFilm(g, t) {
     useMask = true;
   }
   if (sec.name === 'OPEN') exposure = .15 + .85 * ss(t / .45);                      // the lamp strikes: the film is already running
-  if (sec.name === 'THROW') { const k = ss((t - HIT.erupt) / 2.2); exposure = 1 + .06 * k; halation = 1 + .7 * k; }   // the column blooms white
+  if (sec.name === 'THROW') { const k = ss((t - HIT.erupt) / 2.2), fl = t > HIT.erupt ? Math.exp(-(t - HIT.erupt) / .18) : 0; exposure = 1 + .06 * k + .5 * fl; halation = 1 + .7 * k + 2 * fl; }   // a white flash as it goes   // the column blooms white
   if (sec.name === 'FADE') exposure = 1 - ss((t - SEC.FADE.t0) / SEC.FADE.dur * 1.05);
   if (card) halation = 1.4;
   // iris (in the camera, so it is printed with the frame)
