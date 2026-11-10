@@ -1,4 +1,3 @@
-@font-face{font-family:'Cormorant';src:url('CormorantGaramond[wght].ttf');font-weight:300 700;font-style:normal}
-@font-face{font-family:'Cormorant';src:url('CormorantGaramond-Italic[wght].ttf');font-weight:300 700;font-style:italic}
-@font-face{font-family:'CormorantSC';src:url(CormorantSC-Medium.ttf);font-weight:500}
-@font-face{font-family:'CormorantSC';src:url(CormorantSC-SemiBold.ttf);font-weight:600}
+@font-face { font-family: 'Kanit'; font-style: italic; font-weight: 900; src: url(Kanit-BlackItalic.ttf) format('truetype'); font-display: block; }
+@font-face { font-family: 'Kanit'; font-style: italic; font-weight: 800; src: url(Kanit-ExtraBoldItalic.ttf) format('truetype'); font-display: block; }
+@font-face { font-family: 'Barlow SC'; font-weight: 600; src: url(BarlowSemiCondensed-SemiBold.ttf) format('truetype'); font-display: block; }

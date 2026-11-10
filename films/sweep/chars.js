@@ -1,157 +1,194 @@
-// SWEEP — the cast, drawn as xieyi (写意) figures: one pale mass + a few loaded strokes, features in 3–5 strokes.
-// The imp's broom tassel is the film's one vermilion. All functions draw into a layer set L ({wet, dry, col} contexts).
-import { mk, draw, mass, blot } from './ink.js';
-import { clamp, lerp, vnoise } from '/core/lib.js';
+// SWEEP — the cast as 80s cels: flat fill, a hard shadow crescent, a hard highlight, a coloured line (never pure black),
+// an optional neon rim. Origin at the feet; s = px per unit; f = 1 faces right, -1 left. P = colour model (pal.js).
+import { cel, path, poly, line, ribbon, flutter, mix, rgba, TAU } from './cel.js';
 
-export const VERM = [176, 46, 34];
-const P = (x, y, s, f) => (px, py) => [x + px * s * f, y + py * s];
+const LIGHT = [-1, -.8];
+const SO = k => [LIGHT[0] * k, LIGHT[1] * k], HO = k => [-LIGHT[0] * k, -LIGHT[1] * k];
+const tf = (x, y, s, f) => (px, py) => [x + px * s * f, y + py * s];
+const map = (T, pts) => pts.map(p => { const q = T(p[0], p[1]); if (p[2]) q.push(1); return q; });
 
-// ---------------- the imp (Sweep) ----------------
-// origin at his feet; s = px per unit (he is ~58 units tall, his broom ~100). o: { f (1 right, -1 left), t, bob, squash,
-// broom (handle angle rad: 0 upright, + head forward), lift (bristles off the ground), look ([x,y] eye shift), blink (0..1),
-// tilt (rad), arms ('broom' | 'up' | 'shy' | 'hold'), noBroom, step (gait phase, 0 = standing) }
-const BODY = [[-15, -4], [-19, -22], [-16, -42], [-8, -54], [2, -57], [12, -50], [18, -34], [17, -14], [10, -3], [0, 0]];
-export function imp(L, x, y, s, o = {}) {
-  const f = o.f ?? 1, t = o.t ?? 0, sq = o.squash ?? 1, bob = (o.bob ?? 0), tl = o.tilt ?? 0;
-  const ct = Math.cos(tl), st = Math.sin(tl);
-  const T = (px, py) => { const qx = px * ct - py * st, qy = px * st + py * ct; return [x + qx * s * f, y + (qy * sq + bob) * s]; };
-  const ink = L.ink || L;
-  // feet: two short burnt strokes, stepping
-  const ph = o.step ?? 0, stp = Math.sin(ph * Math.PI * 2);
-  for (const [k, dx] of [[0, -6], [1, 6]]) {
-    const lift = o.step ? Math.max(0, (k ? -stp : stp)) * 3 : 0;
-    draw(ink, mk([[x + (dx - 1) * s * f, y - (2 + lift) * s], [x + (dx + 4 + (o.step ? (k ? -stp : stp) * 3 : 0)) * s * f, y - lift * s]], { w: 3.2 * s, tone: .9, dry: .35, wet: .2, prof: 'nail', seed: 30 + k }));
+// an almond eye: white, a tall layered iris, two highlights, a thick upper lash flicking outward; open 0..1, look [x,y]
+function eye(g, e, cx, cy, w, h, P, o = {}) {
+  const open = o.open ?? 1, f = o.f ?? 1;
+  if (open < .15) { line(g, [[cx - w, cy], [cx, cy + h * .25], [cx + w, cy - h * .1]], P.eye.l, Math.max(1.6, w * .22)); return; }
+  const top = cy - h * open, bot = cy + h * .55;
+  const A = [[cx - w, cy + h * .1, 1], [cx - w * .3, top], [cx + w * .6, top + h * .1], [cx + w * 1.05, cy - h * .05, 1], [cx + w * .4, bot], [cx - w * .4, bot]];
+  const E = path(A);
+  g.save(); g.fillStyle = P.eye.f; g.fill(E); g.clip(E);
+  const lx = (o.look?.[0] ?? 0) * w * .5 * f, ly = (o.look?.[1] ?? 0) * h * .4;
+  const ix = cx + lx + w * .1 * f, iy = cy + ly + h * .05, ir = w * .58;
+  g.fillStyle = P.iris.f; g.beginPath(); g.ellipse(ix, iy, ir * .8, ir * 1.15, 0, 0, TAU); g.fill();
+  g.fillStyle = P.iris.s; g.fillRect(ix - ir, iy - ir * 1.3, ir * 2, ir * .7);
+  g.fillStyle = P.iris.h; g.beginPath(); g.ellipse(ix, iy + ir * .55, ir * .55, ir * .3, 0, 0, TAU); g.fill();
+  g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(ix - ir * .3 * f, iy - ir * .45, ir * .28, ir * .34, 0, 0, TAU); g.fill();
+  g.beginPath(); g.arc(ix + ir * .3 * f, iy + ir * .3, ir * .12, 0, TAU); g.fill();
+  if (o.glint && e) { e.fillStyle = rgba('#ffffff', .8); e.beginPath(); e.arc(ix - ir * .3 * f, iy - ir * .45, ir * .5, 0, TAU); e.fill(); }
+  g.restore();
+  line(g, [[cx - w * 1.05, cy + h * .15], [cx - w * .3, top - h * .05], [cx + w * .6, top + h * .05], [cx + w * 1.2, cy - h * .25]], P.eye.l, Math.max(2, w * .3));
+  line(g, [[cx + w * .9, cy - h * .1], [cx + w * 1.35, cy - h * .45]], P.eye.l, Math.max(1.4, w * .16));   // the lash flick
+}
+
+// ---------------- Sweep ----------------
+// o: { t, f, broom (handle angle: 0 upright, + head forward), blink, look, mouth (0 closed, 1 talk, 2 open, 'smile'),
+//      brow (−1 sad … 1 determined), squash, bob, step, arms ('broom'|'up'|'shy'), noBroom, rim, scarfWind }
+const BODY = [[-17, -2], [-21, -22], [-18, -42], [-9, -54], [2, -57], [13, -50], [19, -33], [18, -14], [11, -2], [0, 0]];
+export function imp(g, e, x, y, s, P, o = {}) {
+  const f = o.f ?? 1, t = o.t ?? 0, sq = o.squash ?? 1, bob = o.bob ?? 0, lw = Math.max(1.6, s * .7);
+  const T = (px, py) => [x + px * s * f, y + (py * sq + bob) * s];
+  const rim = o.rim ? { c: o.rim, d: [f * s * .8, -s * .3] } : null;
+  const st = o.step ? Math.sin(o.step * TAU) : 0;
+  // feet
+  for (const [k, dx] of [[0, -7], [1, 7]]) { const lift = o.step ? Math.max(0, k ? -st : st) * 3 : 0, sw = o.step ? (k ? -st : st) * 3 : 0;
+    cel(g, map(T, [[dx - 5 + sw, -lift], [dx - 4 + sw, -5 - lift], [dx + 5 + sw, -5 - lift], [dx + 7 + sw, -lift]]), { f: P.imp.s, l: P.imp.l, lw }); }
+  // the broom behind his near arm: handle + straw head + vermilion tassel
+  let bh = null;
+  if (!o.noBroom) {
+    const a = o.broom ?? .45, dir = [Math.sin(a) * f, Math.cos(a)], grip = o.gripAt || T(17, -16);
+    const reach = dir[1] < .25 ? 58 * s : Math.max(30 * s, Math.min(90 * s, (y - grip[1]) / dir[1]));
+    const top = [grip[0] - dir[0] * 40 * s, grip[1] - dir[1] * 40 * s], head = [grip[0] + dir[0] * reach, grip[1] + dir[1] * reach];
+    bh = { head, top, grip, dir };
+    const nx = -dir[1], ny = dir[0];
+    cel(g, poly([[top[0] + nx * 1.4 * s, top[1] + ny * 1.4 * s], [head[0] + nx * 1.4 * s, head[1] + ny * 1.4 * s], [head[0] - nx * 1.4 * s, head[1] - ny * 1.4 * s], [top[0] - nx * 1.4 * s, top[1] - ny * 1.4 * s]]), { f: P.wood.f, s: P.wood.s, so: [nx * 1.2 * s, ny * 1.2 * s], l: P.wood.l, lw });
+    broomHead(g, head, dir, s, P, o.drag ?? 0, f);
+    tassel(g, top, s, t, P, f);
   }
-  // body: one pale wet mass + two loaded strokes (back and belly), the dark side away from the light
-  mass(ink.wet, BODY.map(p => T(...p)), .3, 1.2 * s, 11, [x, y - 58 * s, x, y, .8, 1.15]);
-  draw(ink, mk([T(-14, -6), T(-18.5, -26), T(-13, -47), T(-2, -56.5)], { w: 7 * s, tone: .78, darkDir: [-f, 0], side: .85, dry: .38, wet: .55, prof: 'brush', seed: 21, brWet: true, body: .4 }));
-  draw(ink, mk([T(5, -56.5), T(15, -47), T(18.5, -27), T(12, -5)], { w: 4.5 * s, tone: .68, darkDir: [f, 0], side: .7, dry: .4, wet: .5, prof: 'tip', seed: 22, brWet: true, body: .4 }));
-  // the horn-tuft: one burnt flick
-  draw(ink, mk([T(-1, -55), T(1, -66), T(7, -73)], { w: 3.4 * s, tone: .95, prof: 'nail', dry: .45, wet: .1, seed: 23 }));
-  // eyes: two burnt dots (blink squashes them), a tiny mouth line when he speaks or smiles
-  const lk = o.look || [0, 0], bl = 1 - clamp(o.blink ?? 0) * .85;
-  for (const ex of [5, 12.5]) { const e = T(ex + lk[0], -40 + lk[1]); blot(ink.dry, e[0], e[1], 1.9 * s, .95, 0, bl, ex); }
-  if (o.mouth) { const m0 = T(7 + lk[0] * .6, -32.5), m1 = T(12 + lk[0] * .6, -33 + (o.smile ?? 0) * 1.5); draw(ink, mk([m0, [lerp(m0[0], m1[0], .5), lerp(m0[1], m1[1], .5) + (o.smile ?? 0) * 1.6 * s], m1], { w: 1.4 * s, tone: .9, prof: 'tip', dry: .3, seed: 24 })); }
-  if (o.noBroom) { arms(ink, T, s, f, o, null); return; }
-  // the broom (taller than he is): handle in burnt ink, bristles a fan of dry strokes, the red tassel at the top
-  const a = o.broom ?? .45, dir = [Math.sin(a) * f, Math.cos(a)];
-  const grip = o.gripAt || T(17, -27);
-  const reach = o.ground === false || dir[1] < .25 ? 58 * s : clamp((y - (o.lift ?? 0) * s - grip[1]) / dir[1], 30 * s, 90 * s);   // the bristles rest on the ground
-  const top = [grip[0] - dir[0] * 40 * s, grip[1] - dir[1] * 40 * s], head = [grip[0] + dir[0] * reach, grip[1] + dir[1] * reach];
-  draw(ink, mk([top, [lerp(top[0], head[0], .5) + (vnoise(t * .5) - .5) * s, lerp(top[1], head[1], .5)], head], { w: 2.6 * s, tone: .92, prof: 'even', dry: .3, wet: .1, seed: 40 }));
-  broomHead(ink, head, dir, s, o.drag ?? 0, f);
-  tassel(L, top, s, t, f);
-  arms(ink, T, s, f, o, [grip, [lerp(grip[0], top[0], .45), lerp(grip[1], top[1], .45)]]);
-  return { head, top, grip };
-}
-function arms(ink, T, s, f, o, grips) {
-  const mode = o.arms || 'broom';
-  let A, B;
-  if (grips && mode === 'broom') { A = grips[0]; B = grips[1]; }
-  else if (mode === 'up') { A = T(26, -58); B = T(-8, -62); }
-  else if (mode === 'shy') { A = T(12, -22); B = T(8, -20); }
-  else { A = T(21, -22); B = T(-15, -20); }
-  draw(ink, mk([T(13, -30), [lerp(T(13, -30)[0], A[0], .5), lerp(T(13, -30)[1], A[1], .5) + 2 * s], A], { w: 2.6 * s, tone: .88, prof: 'tip', dry: .35, wet: .15, seed: 50 }));
-  draw(ink, mk([T(-6, -32), [lerp(T(-6, -32)[0], B[0], .5), lerp(T(-6, -32)[1], B[1], .5) + 2 * s], B], { w: 2.4 * s, tone: .8, prof: 'tip', dry: .35, wet: .15, seed: 51 }));
-}
-// broom bristles: a fan of dry strokes; drag (0..1) bends them back along the ground
-export function broomHead(ink, head, dir, s, drag = 0, f = 1, k = 1) {
-  const base = Math.atan2(dir[1], dir[0]);
-  for (let i = 0; i < 9; i++) {
-    const u = i / 8 - .5, a = base + u * .75 - drag * .5 * f, len = (24 + 6 * Math.cos(u * 3)) * s * k;
-    const b0 = [head[0] - dir[0] * 4 * s, head[1] - dir[1] * 4 * s], b1 = [head[0] + Math.cos(a) * len, head[1] + Math.sin(a) * len];
-    draw(ink, mk([b0, [lerp(b0[0], b1[0], .55) - drag * 3 * s * f, lerp(b0[1], b1[1], .55)], b1], { w: 2.4 * s * k, tone: .8, prof: 'nail', dry: .62, wet: .15, seed: 60 + i }));
+  // body
+  const B = map(T, BODY);
+  cel(g, B, { f: P.imp.f, s: P.imp.s, so: SO(4 * s), h: P.imp.h, ho: HO(2.2 * s), l: P.imp.l, lw: lw * 1.1, rim });
+  cel(g, map(T, [[2, -5], [-1, -14], [3, -22], [12, -23], [16, -14], [14, -5]]), { f: P.belly.f, s: P.belly.s, so: SO(2.5 * s), l: P.belly.l, lw: lw * .8 });
+  // horn: one curl
+  cel(g, map(T, [[-4, -54], [-6, -66], [0, -75], [8, -74, 1], [3, -70], [1, -62], [3, -55]]), { f: P.horn.f, s: P.horn.s, so: SO(1.6 * s), l: P.horn.l, lw });
+  // scarf (the accent): a band at the neck + a tail fluttering behind
+  const wind = o.scarfWind ?? .3;
+  cel(g, map(T, [[-20, -30], [-6, -26], [10, -26], [20, -30], [19, -24], [8, -21], [-6, -21], [-20, -24]]), { f: P.accent.f, s: P.accent.s, so: SO(1.5 * s), l: P.accent.l, lw });
+  const tail = flutter(...T(-16, -26), f > 0 ? Math.PI + .9 - wind * .5 : -.9 + wind * .5, 14 * s * (.7 + wind), 8, 2 * s * (.5 + wind), 1.2, t * 8, 5 * s * (1 - wind));
+  cel(g, ribbon(tail, u => (1 - u * .6) * 5 * s), { f: P.accent.f, s: P.accent.s, so: SO(1.2 * s), l: P.accent.l, lw });
+  // face: almond eyes, brows, mouth
+  const lk = o.look || [0, 0], open = 1 - (o.blink ?? 0);
+  const brow = o.brow ?? 0;
+  for (const [ex, k] of [[3, .8], [13, 1]]) {
+    const c = T(ex, -40);
+    eye(g, e, c[0], c[1], 4.6 * s * k, 5 * s, P, { open, look: lk, f, glint: o.glint });
+    line(g, [[c[0] - 4.5 * s * f, c[1] - 8 * s + brow * .8 * s], [c[0] + 4 * s * f, c[1] - 8.6 * s - brow * 1.6 * s]], P.imp.l, Math.max(1.3, s * .6));
   }
-  draw(ink, mk([[head[0] - dir[1] * 7 * s - dir[0] * 4 * s, head[1] + dir[0] * 7 * s - dir[1] * 4 * s], [head[0] + dir[1] * 7 * s - dir[0] * 4 * s, head[1] - dir[0] * 7 * s - dir[1] * 4 * s]], { w: 3.4 * s * k, tone: .95, prof: 'even', dry: .2, seed: 69 }));   // the binding
+  const m = o.mouth ?? 0, mc = T(9, -32);
+  if (m === 'smile') line(g, [[mc[0] - 3 * s, mc[1] - .6 * s], [mc[0], mc[1] + 1.2 * s], [mc[0] + 3 * s, mc[1] - .6 * s]], P.imp.l, Math.max(1.3, s * .5));
+  else if (m) { g.fillStyle = P.mouth || '#7a2a3a'; g.beginPath(); g.ellipse(mc[0], mc[1] + s * .3, 2.2 * s, (m === 2 ? 2 : 1) * s, 0, 0, TAU); g.fill(); g.strokeStyle = P.imp.l; g.lineWidth = Math.max(1.2, s * .4); g.stroke(); }
+  else line(g, [[mc[0] - 2 * s, mc[1]], [mc[0] + 2 * s, mc[1] + .2 * s]], P.imp.l, Math.max(1.2, s * .45));
+  // arms
+  const am = o.arms || 'broom';
+  const hands = am === 'broom' && bh ? [bh.grip, [bh.grip[0] - bh.dir[0] * 16 * s, bh.grip[1] - bh.dir[1] * 16 * s]] : am === 'up' ? [T(26, -60), T(-14, -62)] : am === 'shy' ? [T(12, -20), T(6, -18)] : [T(22, -20), T(-20, -20)];
+  for (const [i, sh] of [[0, T(15, -19)], [1, T(-12, -20)]]) {
+    const hd = hands[i], sp = [sh, [(sh[0] + hd[0]) / 2, (sh[1] + hd[1]) / 2 + 2 * s], hd];
+    cel(g, ribbon(sp, u => (3.4 - u * .8) * s), { f: i ? P.imp.s : P.imp.f, l: P.imp.l, lw });
+    g.fillStyle = i ? P.imp.s : P.imp.f; g.beginPath(); g.arc(hd[0], hd[1], 2.4 * s, 0, TAU); g.fill(); g.strokeStyle = P.imp.l; g.lineWidth = lw; g.stroke();
+  }
+  return bh;
 }
-// the vermilion tassel: a knot + a few hanging threads that swing
-export function tassel(L, p, s, t, f = 1, am = 1) {
-  const c = L.ink ? L.ink.col : L.col; if (!c) return;
-  const sw = Math.sin(t * 2.3) * 3 * s;
-  blot(c, p[0], p[1], 3.2 * s, .95 * am, 0, 1, 7);
-  for (let i = 0; i < 5; i++) draw({ col: c }, mk([[p[0] + (i - 2) * .9 * s, p[1] + 2 * s], [p[0] + (i - 2) * 1.4 * s + sw * .5, p[1] + 8 * s], [p[0] + (i - 2) * 1.6 * s + sw, p[1] + 14 * s]], { w: 1.4 * s, color: VERM, tone: .92 * am, prof: 'tip', dry: .2, seed: 70 + i }));
+export function broomHead(g, head, dir, s, P, drag = 0, f = 1, k = 1) {
+  const a = Math.atan2(dir[1], dir[0]), nx = -dir[1], ny = dir[0];
+  const L = 26 * s * k, Wd = 12 * s * k, bend = drag * 6 * s * -f;
+  const tip = (u) => [head[0] + dir[0] * L + nx * (u * Wd) + bend, head[1] + dir[1] * L + ny * (u * Wd)];
+  const shape = [[head[0] + nx * 3 * s * k, head[1] + ny * 3 * s * k, 1], tip(1), tip(.5), tip(0), tip(-.5), tip(-1), [head[0] - nx * 3 * s * k, head[1] - ny * 3 * s * k, 1]];
+  cel(g, path(shape), { f: P.straw.f, s: P.straw.s, so: [nx * 3 * s, ny * 3 * s], h: P.straw.h, ho: [-nx * 1.5 * s, -ny * 1.5 * s], l: P.straw.l, lw: Math.max(1.4, s * .55) });
+  for (let i = -3; i <= 3; i++) { const b = tip(i / 3.4); line(g, [[head[0] + dir[0] * 8 * s * k + nx * i * s * k, head[1] + dir[1] * 8 * s * k + ny * i * s * k], b], P.straw.l, Math.max(.9, s * .3)); }
+  line(g, [[head[0] + nx * 4.5 * s * k + dir[0] * 4 * s, head[1] + ny * 4.5 * s * k + dir[1] * 4 * s], [head[0] - nx * 4.5 * s * k + dir[0] * 4 * s, head[1] - ny * 4.5 * s * k + dir[1] * 4 * s]], P.accent.s, Math.max(2, s * 1.4));   // the binding
+}
+export function tassel(g, p, s, t, P, f = 1) {
+  const sw = Math.sin(t * 2.6) * 3 * s;
+  cel(g, path([[p[0] - 3 * s, p[1] + 2 * s], [p[0] + sw * .3, p[1] - 2.5 * s], [p[0] + 3 * s, p[1] + 2 * s], [p[0] + 3.5 * s + sw, p[1] + 14 * s], [p[0] - 3.5 * s + sw, p[1] + 14 * s]]), { f: P.accent.f, s: P.accent.s, so: SO(1.4 * s), h: P.accent.h, ho: HO(.8 * s), l: P.accent.l, lw: Math.max(1.2, s * .45) });
 }
 
 // ---------------- the Great King ----------------
-// a huge wet mass of ink with burning eyes; s = px per unit (≈ 300 units tall). o: { f, t, roar (0..1), run (gait phase), arms ('down'|'up'|'point') }
-export function king(L, x, y, s, o = {}) {
-  const f = o.f ?? 1, t = o.t ?? 0, ink = L.ink || L, T = P(x, y, s, f), r = o.roar ?? 0, br = Math.sin(t * 1.3) * 2;
-  const run = o.run;
-  // legs
-  for (const [k, dx] of [[0, -40], [1, 40]]) {
-    const sw = run != null ? Math.sin((run + k * .5) * Math.PI * 2) * 30 : 0;
-    draw(ink, mk([T(dx, -70), T(dx + sw * .5, -35), T(dx + sw, 0)], { w: 26 * s, tone: .85, darkDir: [-1, 0], side: .7, dry: .4, wet: .6, prof: 'press', brWet: true, body: .5, seed: 100 + k }));
-  }
-  // the body: a dark wet mass, heaving
-  const body = [[-90, -60], [-110, -150], [-95, -230], [-50, -285], [10, -300 - br], [70, -280], [105, -220], [115, -140], [95, -60], [0, -45]];
-  mass(ink.wet, body.map(p => T(...p)), .72, 6 * s, 101, [x, y - 300 * s, x, y, 1.1, .7]);
-  draw(ink, mk([T(-85, -70), T(-108, -160), T(-80, -255), T(0, -298)], { w: 40 * s, tone: .9, darkDir: [-f, 0], side: .9, dry: .5, wet: .8, prof: 'brush', brWet: true, body: .3, seed: 102 }));
-  // horns: two thick loaded strokes curling up and out
-  for (const sg of [-1, 1]) draw(ink, mk([T(sg * 45, -275), T(sg * 85, -330), T(sg * 70, -385), T(sg * 40, -400)], { w: 18 * s, tone: .95, prof: 'nail', dry: .45, wet: .3, seed: 104 + sg }));
+// ≈ 300 units tall. o: { t, f, roar (0..1), run (gait phase), arms ('down'|'up'|'point'), rim }
+export function king(g, e, x, y, s, P, o = {}) {
+  const f = o.f ?? 1, t = o.t ?? 0, r = o.roar ?? 0, T = tf(x, y, s, f), lw = Math.max(2, s * 2.4), br = Math.sin(t * 1.4) * 3;
+  const rim = o.rim ? { c: o.rim, d: [f * 4 * s, -2 * s] } : null;
+  for (const [k, dx] of [[0, -45], [1, 45]]) { const sw = o.run != null ? Math.sin((o.run + k * .5) * TAU) * 30 : 0;
+    cel(g, map(T, [[dx - 22, -80], [dx + 22, -80], [dx + 20 + sw, -6], [dx + 34 + sw, 0], [dx - 26 + sw, 0], [dx - 22 + sw * .5, -40]]), { f: P.king.s, s: mix(P.king.s, '#000000', .3), so: SO(4 * s), l: P.king.l, lw }); }
+  const body = [[-95, -60], [-118, -150], [-100, -232], [-52, -286], [10, -302 - br], [72, -282], [108, -222], [120, -142], [98, -60], [0, -48]];
+  cel(g, map(T, body), { f: P.king.f, s: P.king.s, so: SO(14 * s), h: P.king.h, ho: HO(6 * s), l: P.king.l, lw: lw * 1.2, rim });
+  // fur collar
+  const col = []; for (let i = 0; i <= 14; i++) { const u = i / 14, a = Math.PI * (1.05 + .9 * u); col.push([Math.cos(a) * 118, -170 + Math.sin(a) * -40 + (i % 2 ? 12 : -6), i % 2 ? 0 : 1]); }
+  cel(g, map(T, [...col, [100, -150], [0, -130], [-100, -150]]), { f: P.fur.f, s: P.fur.s, so: SO(6 * s), h: P.fur.h, ho: HO(3 * s), l: P.fur.l, lw });
+  // horns
+  for (const sg of [-1, 1]) cel(g, map(T, [[sg * 30, -270], [sg * 58, -275], [sg * 96, -330], [sg * 82, -392], [sg * 48, -410, 1], [sg * 70, -372], [sg * 64, -330]]), { f: P.bone.f, s: P.bone.s, so: SO(5 * s), l: P.bone.l, lw });
   // arms
   const am = o.arms || 'down';
   for (const sg of [-1, 1]) {
-    const sh = T(sg * 90, -200), hand = am === 'up' ? T(sg * 150, -330) : am === 'point' && sg > 0 ? T(230, -220) : T(sg * 125, -90 + Math.sin(t * 2 + sg) * 4);
-    draw(ink, mk([sh, [lerp(sh[0], hand[0], .5) + sg * 10 * s * f, lerp(sh[1], hand[1], .5)], hand], { w: 22 * s, tone: .88, prof: 'press', dry: .45, wet: .5, brWet: true, body: .5, seed: 108 + sg }));
-    for (let k = 0; k < 3; k++) draw(ink, mk([hand, [hand[0] + (k - 1) * 9 * s + sg * 8 * s * f, hand[1] - (am === 'up' ? 22 : -6) * s]], { w: 5 * s, tone: .96, prof: 'nail', dry: .3, seed: 112 + k + sg * 3 }));
+    const sh = T(sg * 92, -205), hand = am === 'up' ? T(sg * 160, -340) : am === 'point' && sg > 0 ? T(240, -230) : T(sg * 130, -92 + Math.sin(t * 2 + sg) * 4);
+    cel(g, ribbon([sh, [(sh[0] + hand[0]) / 2 + sg * 12 * s * f, (sh[1] + hand[1]) / 2], hand], u => (30 - u * 10) * s), { f: P.king.f, s: P.king.s, so: SO(5 * s), l: P.king.l, lw });
+    for (let k = 0; k < 3; k++) cel(g, map(T, []).concat([[hand[0] + (k - 1) * 9 * s, hand[1]], [hand[0] + (k - 1) * 11 * s + 3 * s, hand[1] + (am === 'up' ? -18 : 14) * s], [hand[0] + (k - 1) * 9 * s + 6 * s, hand[1]]]), { f: P.bone.f, l: P.bone.l, lw: lw * .7 });
   }
-  // eyes: paper left blank in the ink (holes), burnt pupils; the mouth a jagged burnt stroke that opens to show paper teeth
-  const eyes = [T(-30, -215), T(30, -215)];
-  for (const c of [ink.wet, ink.dry]) { c.save(); c.globalCompositeOperation = 'destination-out'; for (const e of eyes) { c.beginPath(); c.ellipse(e[0], e[1], 15 * s, (9 + r * 4) * s, 0, 0, 7); c.fill(); } const m = T(0, -160); c.beginPath(); c.ellipse(m[0], m[1], 42 * s, (4 + r * 20) * s, 0, 0, 7); c.fill(); c.restore(); }
-  for (const e of eyes) blot(ink.dry, e[0] + 4 * s * f, e[1] + 1 * s, 5 * s, .96, 0, 1, 3);
-  for (const sg of [-1, 1]) draw(ink, mk([T(sg * 52, -238 - r * 6), T(sg * 14, -228)], { w: 7 * s, tone: .96, prof: 'nail', dry: .3, seed: 120 + sg }));  // brows
-  const m = T(0, -160), teeth = 6;
-  for (let i = 0; i < teeth; i++) { const u = (i + .5) / teeth - .5; const p0 = [m[0] + u * 80 * s, m[1] - (4 + r * 20) * s]; draw(ink, mk([p0, [p0[0] + 4 * s, p0[1] + 8 * s]], { w: 3 * s, tone: .9, prof: 'nail', dry: .3, seed: 130 + i })); }
+  // face: gold eyes that glow, heavy brows, a mouth that opens on teeth
+  for (const sg of [-1, 1]) {
+    const c = T(sg * 32, -222);
+    cel(g, path([[c[0] - 16 * s, c[1] + 2 * s, 1], [c[0], c[1] - (8 + r * 4) * s], [c[0] + 16 * s, c[1] - 2 * s, 1], [c[0], c[1] + 8 * s]]), { f: P.gold.f, s: P.gold.s, so: SO(2 * s), l: P.king.l, lw });
+    g.fillStyle = P.king.l; g.beginPath(); g.ellipse(c[0] + 3 * s * f, c[1], 3.5 * s, 6 * s, 0, 0, TAU); g.fill();
+    if (e) { const gr = e.createRadialGradient(c[0], c[1], 0, c[0], c[1], 40 * s); gr.addColorStop(0, rgba('#ffc040', .7)); gr.addColorStop(1, rgba('#ff8020', 0)); e.fillStyle = gr; e.beginPath(); e.arc(c[0], c[1], 40 * s, 0, TAU); e.fill(); }
+    line(g, [T(sg * 60, -246 - r * 6), T(sg * 12, -236)], P.king.l, 9 * s);
+  }
+  const mo = T(0, -165), mh = (5 + r * 26) * s;
+  cel(g, path([[mo[0] - 48 * s, mo[1] - 4 * s, 1], [mo[0], mo[1] - mh * .4], [mo[0] + 48 * s, mo[1] - 4 * s, 1], [mo[0], mo[1] + mh]]), { f: '#3a0e1e', l: P.king.l, lw });
+  for (let i = 0; i < 5; i++) { const u = (i + .5) / 5 - .5; cel(g, poly([[mo[0] + u * 80 * s - 6 * s, mo[1] - 4 * s], [mo[0] + u * 80 * s + 6 * s, mo[1] - 4 * s], [mo[0] + u * 80 * s, mo[1] + (6 + r * 6) * s]]), { f: P.bone.f, l: P.bone.l, lw: lw * .6 }); }
 }
 
-// ---------------- the demons (quick silhouettes) ----------------
-// kind 0 tusks, 1 many eyes, 2 fangs, 3 long-neck. s = px per unit (≈ 90 units tall). ph = walk phase
-export function demon(L, x, y, s, kind = 0, ph = 0, o = {}) {
-  const f = o.f ?? 1, ink = L.ink || L, T = P(x, y, s, f), seed = 200 + kind * 17 + (o.seed ?? 0);
-  const bob = Math.abs(Math.sin(ph * Math.PI * 2)) * 3;
-  const Y = (px, py) => T(px, py - bob);
-  for (const k of [0, 1]) { const sw = Math.sin((ph + k * .5) * Math.PI * 2) * 12; draw(ink, mk([Y(k ? 8 : -8, -30), T((k ? 8 : -8) + sw, 0)], { w: 5 * s, tone: .9, prof: 'tip', dry: .4, seed: seed + k })); }
-  const shapes = [
-    [[-24, -28], [-28, -60], [-14, -86], [10, -88], [26, -66], [24, -30]],
-    [[-22, -28], [-30, -70], [-10, -96], [16, -94], [30, -64], [20, -28]],
-    [[-26, -28], [-20, -78], [4, -92], [26, -78], [28, -30]],
-    [[-18, -28], [-16, -60], [-4, -70], [0, -110], [14, -112], [12, -64], [20, -30]],
-  ];
-  mass(ink.wet, shapes[kind % 4].map(p => Y(...p)), .55 + (o.dark ?? 0), 2.5 * s, seed, [x, y - 100 * s, x, y, 1.1, .8]);
-  draw(ink, mk(shapes[kind % 4].slice(0, 4).map(p => Y(p[0] - 2, p[1])), { w: 9 * s, tone: .85, darkDir: [-f, 0], side: .8, dry: .45, wet: .6, brWet: true, body: .3, prof: 'brush', seed: seed + 3 }));
-  const hole = (pts, r) => { for (const c of [ink.wet, ink.dry]) { c.save(); c.globalCompositeOperation = 'destination-out'; for (const p of pts) { c.beginPath(); c.arc(p[0], p[1], r * s, 0, 7); c.fill(); } c.restore(); } };
-  if (kind % 4 === 0) { for (const sg of [-1, 1]) { const a = Y(sg * 6 + 6, -40), b = Y(sg * 12 + 8, -56); for (const c of [ink.wet, ink.dry]) { c.save(); c.globalCompositeOperation = 'destination-out'; c.lineWidth = 4 * s; c.lineCap = 'round'; c.beginPath(); c.moveTo(a[0], a[1]); c.quadraticCurveTo(b[0] + 6 * s * f, a[1], b[0], b[1]); c.stroke(); c.restore(); } } hole([Y(4, -66), Y(14, -66)], 3); }
-  if (kind % 4 === 1) { const E = [Y(-6, -72), Y(4, -78), Y(14, -72), Y(-2, -62), Y(10, -62), Y(18, -80), Y(-12, -80)]; hole(E, 2.6); for (const e of E) blot(ink.dry, e[0], e[1], 1.2 * s, .9, 0, 1, e[0]); }
-  if (kind % 4 === 2) { hole([Y(2, -70), Y(14, -70)], 3.4); const m = [Y(-6, -50), Y(0, -44), Y(6, -50), Y(12, -44), Y(18, -50)]; for (const c of [ink.wet, ink.dry]) { c.save(); c.globalCompositeOperation = 'destination-out'; c.lineWidth = 3 * s; c.beginPath(); m.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke(); c.restore(); } }
-  if (kind % 4 === 3) { hole([Y(6, -100), Y(12, -100)], 2.4); }
+// ---------------- the demons ----------------
+const DSH = [
+  [[-26, -28], [-30, -62], [-16, -88], [10, -90], [28, -66], [26, -28]],
+  [[-24, -28], [-32, -72], [-12, -98], [18, -96], [32, -64], [22, -28]],
+  [[-28, -28], [-22, -80], [4, -94], [28, -80], [30, -28]],
+  [[-20, -28], [-18, -62], [-6, -72], [-2, -112], [14, -114], [14, -66], [22, -28]],
+];
+export function demon(g, e, x, y, s, kind, ph, P, o = {}) {
+  const f = o.f ?? 1, k = kind % 4, C = P['d' + (k + 1)], bob = Math.abs(Math.sin(ph * TAU)) * 3, lw = Math.max(1.4, s * .9);
+  const T = (px, py) => [x + px * s * f, y + (py - (py < -20 ? bob : 0)) * s];
+  for (const kk of [0, 1]) { const sw = Math.sin((ph + kk * .5) * TAU) * 10; cel(g, poly([T((kk ? 6 : -10), -30), T((kk ? 12 : -4), -30), T((kk ? 12 : -4) + sw, 0), T((kk ? 4 : -12) + sw, 0)]), { f: C.s, l: C.l, lw }); }
+  cel(g, map(T, DSH[k]), { f: C.f, s: C.s, so: SO(5 * s), h: C.h, ho: HO(2.5 * s), l: C.l, lw, rim: o.rim ? { c: o.rim, d: [f * 2 * s, -s] } : null });
+  const dot = (px, py, r, c) => { const q = T(px, py); g.fillStyle = c; g.beginPath(); g.arc(q[0], q[1], r * s, 0, TAU); g.fill(); };
+  if (k === 0) { dot(4, -68, 3.4, '#fff'); dot(14, -68, 3.4, '#fff'); dot(5, -68, 1.6, C.l); dot(15, -68, 1.6, C.l); for (const sg of [-1, 1]) cel(g, map(T, [[sg * 6 + 8, -44], [sg * 8 + 10, -44], [sg * 14 + 10, -60]]), { f: P.bone.f, l: P.bone.l, lw: lw * .7 }); }
+  if (k === 1) for (const [px, py] of [[-6, -74], [4, -80], [14, -74], [-2, -64], [10, -64], [20, -82], [-12, -82]]) { dot(px, py, 2.8, '#fff'); dot(px + .6, py, 1.3, C.l); }
+  if (k === 2) { dot(2, -72, 3.6, '#fff'); dot(14, -72, 3.6, '#fff'); dot(3, -72, 1.7, C.l); dot(15, -72, 1.7, C.l); line(g, map(T, [[-6, -52], [0, -46], [6, -52], [12, -46], [18, -52]]), '#fff', 2.6 * s); }
+  if (k === 3) { dot(6, -102, 2.8, '#fff'); dot(12, -102, 2.8, '#fff'); dot(6.6, -102, 1.3, C.l); dot(12.6, -102, 1.3, C.l); }
 }
 
 // ---------------- the child ----------------
-// origin at the feet; s = px per unit (≈ 62 units tall). o: { f, t, cry (0..1), arms ('down'|'hug'|'wave'|'hold'), step, look }
-export function child(L, x, y, s, o = {}) {
-  const f = o.f ?? 1, t = o.t ?? 0, ink = L.ink || L, cry = o.cry ?? 0;
-  const shake = cry ? Math.sin(t * 18) * .8 * cry : 0;
-  const T = (px, py) => [x + (px + (py < -20 ? shake : 0)) * s * f, y + py * s];
-  const ph = o.step ?? 0, stp = Math.sin(ph * Math.PI * 2);
-  for (const k of [0, 1]) { const sw = o.step ? (k ? -stp : stp) * 6 : 0; draw(ink, mk([T(k ? 4 : -4, -20), T((k ? 4 : -4) + sw * .5, -10), T((k ? 5 : -5) + sw, 0)], { w: 2.6 * s, tone: .9, prof: 'tip', dry: .35, seed: 300 + k })); }
-  // a pale robe: one light mass + two loaded strokes
-  const robe = [[-11, -18], [-13, -36], [-8, -44], [8, -44], [13, -36], [12, -18]];
-  mass(ink.wet, robe.map(p => T(...p)), .14, 1.2 * s, 301, null);
-  draw(ink, mk([T(-9, -43), T(-13, -32), T(-11, -18)], { w: 4.2 * s, tone: .7, darkDir: [-f, 0], side: .8, dry: .4, wet: .5, brWet: true, body: .3, prof: 'brush', seed: 302 }));
-  draw(ink, mk([T(9, -43), T(12, -30), T(11, -18)], { w: 3.2 * s, tone: .6, prof: 'tip', dry: .45, wet: .4, seed: 303 }));
-  // arms
+// ≈ 64 units tall. o: { t, f, cry (0..1), arms ('down'|'hug'|'eyes'|'hold'|'wave'), mouth, look, step, blink, smile }
+export function child(g, e, x, y, s, P, o = {}) {
+  const f = o.f ?? 1, t = o.t ?? 0, cry = o.cry ?? 0, sh = cry ? Math.sin(t * 16) * .7 * cry : 0, lw = Math.max(1.3, s * .5);
+  const T = (px, py) => [x + (px + (py < -22 ? sh : 0)) * s * f, y + py * s];
+  const st = o.step ? Math.sin(o.step * TAU) : 0;
+  for (const k of [0, 1]) { const sw = o.step ? (k ? -st : st) * 5 : 0; cel(g, poly([T(k ? 1 : -6, -22), T(k ? 6 : -1, -22), T((k ? 6 : -1) + sw, -3), T((k ? 8 : 1) + sw, 0), T((k ? 0 : -7) + sw, 0), T((k ? 1 : -6) + sw * .5, -3)]), { f: P.pants.f, s: P.pants.s, so: SO(1.5 * s), l: P.pants.l, lw }); }
+  cel(g, map(T, [[-10, -20], [-10, -38], [-6, -44.5], [6, -44.5], [10, -38], [10, -20]]), { f: P.jacket.f, s: P.jacket.s, so: SO(2.4 * s), h: P.jacket.h, ho: HO(1.2 * s), l: P.jacket.l, lw });
   const am = o.arms || 'down';
-  const hands = am === 'hug' ? [T(4, -32), T(-2, -31)] : am === 'wave' ? [T(16, -64 + Math.sin(t * 9) * 3), T(-12, -24)] : am === 'hold' ? [T(14, -34), T(10, -33)] : am === 'eyes' ? [T(5, -50), T(1, -50)] : [T(12, -22), T(-11, -22)];
-  draw(ink, mk([T(8, -41), hands[0]], { w: 2.2 * s, tone: .8, prof: 'tip', dry: .35, seed: 304 }));
-  draw(ink, mk([T(-7, -41), hands[1]], { w: 2.2 * s, tone: .72, prof: 'tip', dry: .35, seed: 305 }));
-  // the head: a clear-ink oval; eyes as two small strokes (closed and curved when crying)
-  mass(ink.wet, Array.from({ length: 12 }, (_, i) => { const a = i / 12 * Math.PI * 2; return T(Math.cos(a) * 7.5, -52 + Math.sin(a) * 7.5); }), .1, .6 * s, 306, null);
-  const lk = o.look || [0, 0];
-  for (const ex of [2, 6.5]) { const e = T(ex + lk[0], -52 + lk[1]); if (cry > .3) draw(ink, mk([[e[0] - 1.4 * s, e[1]], [e[0], e[1] + .8 * s], [e[0] + 1.4 * s, e[1]]], { w: .9 * s, tone: .9, prof: 'tip', dry: .2, seed: 307 + ex })); else blot(ink.dry, e[0], e[1], 1.1 * s, .9, 0, 1, ex); }
-  // a straw hat: a wide pale cone mass + two dry ridge lines + a burnt brim line
-  const hat = [[-17, -55], [-2, -68], [3, -69], [18, -55], [2, -57]];
-  mass(ink.wet, hat.map(p => T(...p)), .32, 1 * s, 308, null);
-  draw(ink, mk([T(-18, -55), T(0, -58), T(19, -55)], { w: 1.8 * s, tone: .95, prof: 'tip', dry: .3, seed: 309 }));
-  draw(ink, mk([T(-6, -63), T(-14, -56)], { w: 1.2 * s, tone: .6, prof: 'tip', dry: .6, seed: 310 }));
-  draw(ink, mk([T(8, -63), T(13, -57)], { w: 1.2 * s, tone: .6, prof: 'tip', dry: .6, seed: 311 }));
+  const hands = am === 'hug' ? [T(5, -32), T(-3, -31)] : am === 'eyes' ? [T(5, -51), T(0, -51)] : am === 'hold' ? [T(15, -35), T(11, -34)] : am === 'wave' ? [T(16, -64 + Math.sin(t * 9) * 3), T(-13, -24)] : [T(13, -23), T(-12, -23)];
+  for (const [i, shp] of [[0, T(9, -42)], [1, T(-8, -42)]]) { cel(g, ribbon([shp, [(shp[0] + hands[i][0]) / 2, (shp[1] + hands[i][1]) / 2 + 1.5 * s], hands[i]], u => (3.2 - u * .6) * s), { f: i ? P.jacket.s : P.jacket.f, l: P.jacket.l, lw }); g.fillStyle = P.skin.f; g.beginPath(); g.arc(hands[i][0], hands[i][1], 1.8 * s, 0, TAU); g.fill(); g.strokeStyle = P.skin.l; g.lineWidth = lw * .8; g.stroke(); }
+  // head: a long egg, hair at the sides under the hat, almond eyes, a small nose stroke, a mouth
+  cel(g, map(T, [[-8, -50], [-8, -58], [0, -61], [8, -58], [8.5, -50], [4, -44.5], [-3, -44.5]]), { f: P.skin.f, s: P.skin.s, so: SO(1.6 * s), l: P.skin.l, lw: lw * .8 });
+  for (const sg of [-1, 1]) cel(g, map(T, [[sg * 7, -60], [sg * 10, -52], [sg * 9, -45], [sg * 7, -50]]), { f: P.hair.f, s: P.hair.s, so: SO(1 * s), l: P.hair.l, lw: lw * .7 });
+  const lk = o.look || [0, 0], open = cry > .3 ? 0 : 1 - (o.blink ?? 0);
+  for (const [ex, k] of [[-3.2, .85], [4, 1]]) { const c = T(ex, -53); eye(g, e, c[0], c[1], 1.9 * s * k, 2.2 * s, P, { open, look: lk, f });
+    if (cry > .3) { g.fillStyle = rgba('#bfefff', .9); g.beginPath(); g.ellipse(c[0], c[1] + (2.5 + (t * 2 % 1) * 3) * s, .7 * s, 1.1 * s, 0, 0, TAU); g.fill(); } }
+  line(g, [T(1, -50), T(1.8, -49)], P.skin.l, lw * .8);
+  const mc = T(1, -47.2);
+  if (o.mouth) { g.fillStyle = P.mouth; g.beginPath(); g.ellipse(mc[0], mc[1], 1.2 * s, (o.mouth === 2 ? 1.2 : .6) * s, 0, 0, TAU); g.fill(); }
+  else line(g, o.smile ? [[mc[0] - 1.4 * s, mc[1] - .3 * s], [mc[0], mc[1] + .6 * s], [mc[0] + 1.4 * s, mc[1] - .3 * s]] : cry > .3 ? [[mc[0] - 1.2 * s, mc[1] + .4 * s], [mc[0], mc[1] - .2 * s], [mc[0] + 1.2 * s, mc[1] + .4 * s]] : [[mc[0] - 1 * s, mc[1]], [mc[0] + 1 * s, mc[1]]], P.skin.l, lw * .8);
+  if (o.blush) { g.fillStyle = rgba(P.blush, .45); for (const ex of [-3.5, 5]) { const c = T(ex, -49.5); g.beginPath(); g.ellipse(c[0], c[1], 1.6 * s, .7 * s, 0, 0, TAU); g.fill(); } }
+  // the straw hat: a wide shallow cone
+  cel(g, map(T, [[-19, -58, 1], [-3, -70], [3, -71], [19, -58, 1], [0, -60]]), { f: P.hat.f, s: P.hat.s, so: SO(2 * s), h: P.hat.h, ho: HO(1 * s), l: P.hat.l, lw });
+  line(g, [T(-12, -61), T(12, -61)], P.hat.s, lw * .9);
+}
+
+// a villager holding up a lantern (small, flat)
+export function villager(g, e, x, y, s, P, k = 0, t = 0) {
+  const lw = Math.max(1, s * .5), T = (px, py) => [x + px * s, y + py * s];
+  cel(g, poly([T(-9, 0), T(-10, -34), T(-5, -40), T(6, -40), T(10, -34), T(9, 0)]), { f: P.villager.f, s: P.villager.s, so: SO(2 * s), l: P.villager.l, lw });
+  cel(g, path([T(-6, -40), T(-6, -47), T(0, -50), T(6, -47), T(6, -40)]), { f: P.skin.f, s: P.skin.s, so: SO(1 * s), l: P.skin.l, lw });
+  cel(g, poly([T(-14, -46), T(0, -55), T(14, -46)]), { f: P.hat.f, s: P.hat.s, so: SO(1 * s), l: P.hat.l, lw });
+  line(g, [T(6, -30), T(14, -58)], P.villager.l, 1.6 * s);
+  lantern(g, e, ...T(15, -60 + Math.sin(t * 1.6 + k) * 1.5), 6 * s, P);
+}
+export function lantern(g, e, x, y, r, P) {
+  cel(g, path([[x - r * .9, y - r * .6], [x, y - r * 1.1], [x + r * .9, y - r * .6], [x + r, y + r * .5], [x, y + r * 1.1], [x - r, y + r * .5]]), { f: P.lantern.f, s: P.lantern.s, so: [-r * .25, 0], h: P.lantern.h, ho: [r * .15, -r * .1], l: P.lantern.l, lw: Math.max(1, r * .12) });
+  if (e) { const gr = e.createRadialGradient(x, y, 0, x, y, r * 5); gr.addColorStop(0, rgba('#ffd27a', .9)); gr.addColorStop(.25, rgba('#ffa040', .45)); gr.addColorStop(1, rgba('#ff6020', 0)); e.fillStyle = gr; e.beginPath(); e.arc(x, y, r * 5, 0, TAU); e.fill(); }
 }

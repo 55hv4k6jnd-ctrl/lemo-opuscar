@@ -4,15 +4,18 @@ from PIL import Image, ImageDraw, ImageFont
 D = os.path.dirname(os.path.abspath(__file__))
 F = os.path.join(D, 'fonts')
 SHOTS = [
-  ('3', '1 · OPEN', 'in motion → pull back · 0:00–0:12', 'The first brushstroke is his broom; the cave gate appears around him.'),
-  ('40', '3 · DEMONS', 'handscroll pan · 0:30–0:50', 'A hundred demons, a hundred names inscribed. At the end, him: no name.'),
-  ('55', '4 · THE KING', 'low angle, push-in · 0:50–1:02', '"You! Broom thing! Sweep faster!"'),
-  ('97', '6 · THE POND', 'locked, night · 1:26–1:46', 'He sweeps the moon off the pond. It always comes back.'),
-  ('135', '8 · FLEE', 'lateral tracking, shake · 2:04–2:25', 'The great rain. The King is the first to run.'),
-  ('186', '10 · THE CHILD', 'medium, under the pine · 2:40–3:21', '"Are you… a monster?" — "I… sweep."'),
-  ('223.8', '13 · THE SWEEP', 'flying white, after silence · 3:43', 'One stroke across the whole frame clears the path down the mountain.'),
-  ('280', '15 · THE NAME', 'two-shot, push-in · 4:19–4:52', '"I\'ll call you Sweep."'),
-  ('317', '17 · THE SEAL', 'pull back · 5:06–5:22', 'He signs his name with the broom; the vermilion seal lands.'),
+  ('8.6', '1 · OPEN', 'power-on > crane down · 0:00–0:12', 'Golden morning; the crane comes down to the gate. Chrome title on a brass hit.'),
+  ('40', '3 · DEMONS', 'side tracking · 0:30–0:50', 'A line-up with name cards. His card, at the end, is empty.'),
+  ('55', '4 · THE KING', 'low angle, push · 0:50–1:02', '"You! Broom thing! Sweep faster!"'),
+  ('97', '6 · THE POND', 'locked, night model · 1:26–1:46', 'He sweeps the moon off the pond. It always comes back.'),
+  ('135', '8 · FLEE', 'side tracking, storm model · 2:04–2:25', 'The great rain. The King is the first to run.'),
+  ('186', '10 · THE CHILD', 'medium, push · 2:40–3:21', '"Are you… a monster?" — "I… sweep."'),
+  ('219', '12 · RESOLVE', 'extreme close-up · 3:36–3:43', 'His eyes narrow in the rain. One beat of true silence.'),
+  ('223.2', '13 · THE SWEEP', 'speed lines > impact', 'The instant before the stroke.'),
+  ('226', '13 · THE PATH', 'backlit light', 'A band of gold light tears the storm open, down the mountain.'),
+  ('248', '14 · DAWN', 'slow pan, dawn model · 3:56–4:19', 'Down the cleared path to the village and its lanterns.'),
+  ('283', '15 · THE NAME', 'held close-up · 4:19–4:52', '"Sweep." It was given to me. And it was mine.'),
+  ('300', '16 · THE GATE, AGAIN', 'repainted at dawn · 4:52–5:06', '"You! Broom thing!" — "Sweep, sir. My name is Sweep."'),
 ]
 W = 600; ims = []
 for t, n, fr, line in SHOTS:
@@ -21,10 +24,10 @@ for t, n, fr, line in SHOTS:
 cols, cap = 3, 92
 sheet = Image.new('RGB', (cols * W + (cols + 1) * 16, 70 + ((len(ims) + cols - 1) // cols) * (338 + cap + 16) + 10), (18, 16, 14))
 d = ImageDraw.Draw(sheet)
-ft = ImageFont.truetype(os.path.join(F, 'CormorantSC-SemiBold.ttf'), 34)
-fb = ImageFont.truetype(os.path.join(F, 'CormorantSC-Medium.ttf'), 20)
-fi = ImageFont.truetype(os.path.join(F, 'CormorantGaramond-Italic[wght].ttf'), 19)
-d.text((16, 14), 'Sweep — storyboard (key shots from the real render)', font=ft, fill=(236, 229, 213))
+ft = ImageFont.truetype(os.path.join(F, 'Kanit-BlackItalic.ttf'), 34)
+fb = ImageFont.truetype(os.path.join(F, 'BarlowSemiCondensed-SemiBold.ttf'), 20)
+fi = ImageFont.truetype(os.path.join(F, 'BarlowSemiCondensed-SemiBold.ttf'), 19)
+d.text((16, 14), 'SWEEP — storyboard v2 · 80s Cel Anime (real render)', font=ft, fill=(236, 229, 213))
 for i, (im, n, fr, line) in enumerate(ims):
     x = 16 + (i % cols) * (W + 16); y = 70 + (i // cols) * (338 + cap + 16)
     sheet.paste(im, (x, y))
