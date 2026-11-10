@@ -153,10 +153,11 @@ export function terraces(g, x0, x1, y0, steps, stepH, seed = 1, v = .84) {
   }
 }
 // a hot pool: a dark eye of water with a pale crusted rim
+const blob = (x, y, rx, ry, seed, n = 14) => catmull(Array.from({ length: n }, (_, i) => { const a = i / n * Math.PI * 2, k = .82 + .3 * rnd(i, seed); return [x + Math.cos(a) * rx * k, y + Math.sin(a) * ry * k]; }), true, 4);
 export function pool(g, x, y, rx, ry, seed = 1, t = 0) {
-  form(g, ellipsePts(x, y, rx * 1.18, ry * 1.25, 0, 30), { v: .9, line: 1.4, grad: .06, seed });
-  form(g, ellipsePts(x, y, rx, ry, 0, 30), { v: .56, line: 1.6, grad: -.15, seed: seed + 1 });
-  const c = g.createRadialGradient(x, y, 0, x, y, rx); c.addColorStop(0, grey(.36, .9)); c.addColorStop(1, grey(.56, 0));
+  form(g, blob(x, y, rx * 1.2, ry * 1.3, seed + 7), { v: .9, line: 1.2, grad: .06, seed });
+  form(g, blob(x, y, rx, ry, seed + 9), { v: .64, line: 1.6, grad: -.12, seed: seed + 1 });
+  const c = g.createRadialGradient(x, y, 0, x, y, rx); c.addColorStop(0, grey(.46, .6)); c.addColorStop(1, grey(.64, 0));
   g.save(); g.translate(x, y); g.scale(1, ry / rx); g.translate(-x, -y); g.fillStyle = c; g.beginPath(); g.arc(x, y, rx * .8, 0, 7); g.fill(); g.restore();
   // boiling: small bubbles that swell and pop
   g.fillStyle = grey(.85, .8);
@@ -199,7 +200,7 @@ export function eruption(g, x, base, H, k, t, seed = 9) {
   const bill = [];
   for (let i = 0; i < 30; i++) {
     const u = rnd(i, seed), y = lerp(base - 40, top - H * .1, Math.pow(u, .8)), sway = Math.sin(t * .7 + i) * 24 + (rnd(i + 2, seed) - .5) * (90 + u * 240) * k;
-    bill.push({ x: x + sway + u * 120 * k, y: y + Math.sin(t * 1.3 + i) * 10, r: (50 + u * 170) * (.5 + .5 * k) * (.85 + .3 * rnd(i + 4, seed)) });
+    bill.push({ x: x + sway + u * 120 * k, y: y + Math.sin(t * 1.3 + i) * 10, r: (70 + u * 230) * (.5 + .5 * k) * (.85 + .3 * rnd(i + 4, seed)) });
   }
   for (const q of bill) { const c = g.createRadialGradient(q.x + q.r * .18, q.y + q.r * .22, 0, q.x + q.r * .18, q.y + q.r * .22, q.r); c.addColorStop(0, grey(.64, .95)); c.addColorStop(.86, grey(.6, .9)); c.addColorStop(.95, grey(.58, .5)); c.addColorStop(1, grey(.58, 0)); g.fillStyle = c; g.beginPath(); g.arc(q.x + q.r * .18, q.y + q.r * .22, q.r, 0, 7); g.fill(); }
   for (const q of bill) { const c = g.createRadialGradient(q.x - q.r * .1, q.y - q.r * .14, 0, q.x - q.r * .1, q.y - q.r * .14, q.r * .86); c.addColorStop(0, grey(1, 1)); c.addColorStop(.84, grey(.97, 1)); c.addColorStop(.94, grey(.9, .6)); c.addColorStop(1, grey(.9, 0)); g.fillStyle = c; g.beginPath(); g.arc(q.x - q.r * .1, q.y - q.r * .14, q.r * .86, 0, 7); g.fill(); }

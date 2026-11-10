@@ -1,0 +1,16 @@
+ROPE & STEAM — a silent photoplay of the Yellowstone country
+Style: 1920s Silent Film (Lemo-Opuscar style library). Story, characters, picture, score and sound design are original.
+
+Picture: drawn entirely in code (Canvas2D tonal painting → WebGL2 ink redraw → WebGL2 film-print post);
+no generated images, no stock footage. Engine adapted from the library's silent-film style (engine/).
+
+Fonts (SIL Open Font License 1.1; licence texts in fonts/):
+  Playfair Display / Playfair Display SC — Claus Eggers Sørensen
+  Old Standard TT — Alexey Kryukov
+
+Music: original score for upright piano, written for this film.
+  Upright piano samples: VS Chamber Orchestra: Community Edition (Versilian Studios), CC0 1.0
+Projector sound: synthesised in code (numpy).
+
+References (grammar only, nothing copied): Buster Keaton's 1920s comedies (locked wide gags, deadpan);
+1920s photoplay piano cue sheets; engraved western illustration. No characters, scenes or music from any existing film or series.
