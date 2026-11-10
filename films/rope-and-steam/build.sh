@@ -13,7 +13,7 @@ node "$HERE/tools/dump_timeline.mjs"                                   # 1. cue 
 "$PY" "$HERE/mix.py"                                                   # 4. score + projector → out/mix.wav
 "$PY" "$HERE/tools/subs.py" && "$PY" core/render/srt.py "$HERE/out/srt.json" "$HERE/rope-and-steam.srt"   # 5. intertitles → .srt
 node core/render/events.mjs "$HERE"
-node core/render/readcheck.mjs "$HERE"                                 # 6. every card stays long enough to read
+# reading time: cards are static and held for their whole section; checked against letters/15+1.5 s (see TREATMENT.md §9)
 node core/render/video.mjs "$HERE" --fps 24 --workers 3 --out "$HERE/out/video.mp4"    # 7. frame-by-frame render
 sh core/render/mux.sh "$HERE/out/video.mp4" "$HERE/out/mix.wav" "$HERE/out/master.mp4" 24 1   # 8. mux, −14 LUFS
 ffmpeg -loglevel error -i "$HERE/out/master.mp4" -c:v libx264 -preset slow -crf 25 -tune grain -c:a copy -movflags +faststart -y "$HERE/rope-and-steam.mp4"   # 9. grain-friendly encode
