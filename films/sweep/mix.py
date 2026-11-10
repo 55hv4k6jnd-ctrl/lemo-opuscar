@@ -197,10 +197,10 @@ for e in EVS:
     s = int(e['t'] * SR); duck[max(0, s - int(.15 * SR)):min(N, s + len(x) + int(.3 * SR))] = 1
 from scipy.ndimage import uniform_filter1d
 duck = uniform_filter1d(duck, int(.25 * SR))
-mg = 10 ** (-9 * duck / 20); ag = 10 ** (-3 * duck / 20)
+mg = 10 ** (-14 * duck / 20); ag = 10 ** (-10 * duck / 20)   # music −14 dB, rain and ambience −10 dB under every line
 room = np.random.default_rng(3).standard_normal((int(1.4 * SR), 2)) * np.exp(-ts(int(1.4 * SR)) * 4.2)[:, None] * .02
 musr = mus + np.stack([fftconvolve(mus[:, c], room[:, c])[:N] for c in (0, 1)], 1) * .6
-mix = musr * .55 * mg[:, None] + fol * .9 + amb * .8 * ag[:, None] + voc * 1.6
+mix = musr * .55 * mg[:, None] + fol * .9 * ag[:, None] + amb * .8 * ag[:, None] + voc * 2.0
 mix = mix / max(1e-9, np.abs(mix).max()) * .9
 os.makedirs(os.path.join(D, 'out'), exist_ok=True)
 sf.write(os.path.join(D, 'out/mix.wav'), mix.astype(np.float32), SR, subtype='PCM_24')
