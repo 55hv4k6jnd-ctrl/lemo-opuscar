@@ -1,0 +1,324 @@
+[
+ {
+  "id": "01",
+  "role": "N",
+  "text": "For three hundred years, I swept the gate of the Great King's cave.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "02",
+  "role": "N",
+  "text": "Leaves in autumn. Snow in winter. Bones, mostly, the rest of the year.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "03",
+  "role": "N",
+  "text": "The Great King had a hundred demons. A hundred names.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "04",
+  "role": "N",
+  "text": "Iron Tusk. Seven Eyes. Mister Fang.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb",
+  "asr": "Iron Tusk. Seven Eyes. Mr. Fang."
+ },
+ {
+  "id": "05",
+  "role": "N",
+  "text": "Nobody ever asked mine.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "06",
+  "role": "K",
+  "text": "You! Broom thing! Sweep faster!",
+  "voice": "am_onyx",
+  "speed": 0.84,
+  "lang": "en-us"
+ },
+ {
+  "id": "07",
+  "role": "N",
+  "text": "I do not think he knew I had one.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "08",
+  "role": "N",
+  "text": "Every morning, the demons marched down the mountain to frighten the villages.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "09",
+  "role": "N",
+  "text": "Every evening, they marched back, and the gate was dirty again.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "10",
+  "role": "N",
+  "text": "So I swept. That is what I was for.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "11",
+  "role": "N",
+  "text": "Some nights, I swept the moon off the pond.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "12",
+  "role": "N",
+  "text": "It always came back. I liked that about it.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "13",
+  "role": "N",
+  "text": "Then came the summer of the great rain.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "14",
+  "role": "K",
+  "text": "The mountain is falling! Every demon for himself!",
+  "voice": "am_onyx",
+  "speed": 0.9,
+  "lang": "en-us"
+ },
+ {
+  "id": "15",
+  "role": "N",
+  "text": "The Great King was the first to run. He is very brave, normally.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "16",
+  "role": "N",
+  "text": "A hundred demons, gone in a hundred directions.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "17",
+  "role": "N",
+  "text": "I stayed. Nobody had told me to stop sweeping.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "18",
+  "role": "N",
+  "text": "That was when I heard it. Crying, under the old pine.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "19",
+  "role": "C",
+  "text": "Is someone there? I can't find the path home.",
+  "voice": "af_nicole",
+  "speed": 0.9,
+  "lang": "en-us"
+ },
+ {
+  "id": "20",
+  "role": "N",
+  "text": "A human child. Lost, and soaked, and smaller than my broom.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "21",
+  "role": "N",
+  "text": "Demons are meant to frighten children.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "22",
+  "role": "N",
+  "text": "I had never frightened anyone. I didn't know where to start.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "23",
+  "role": "C",
+  "text": "Are you… a monster?",
+  "voice": "af_nicole",
+  "speed": 0.9,
+  "lang": "en-us"
+ },
+ {
+  "id": "24",
+  "role": "S",
+  "text": "I… sweep.",
+  "voice": "bm_fable",
+  "speed": 0.95,
+  "lang": "en-gb"
+ },
+ {
+  "id": "25",
+  "role": "N",
+  "text": "The water was rising. The path down the mountain was gone, under mud and broken trees.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "26",
+  "role": "N",
+  "text": "So I did the only thing I know.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "27",
+  "role": "N",
+  "text": "By morning, the rain had stopped.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "28",
+  "role": "N",
+  "text": "At the bottom of the mountain, the child's village was waiting with lanterns.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "29",
+  "role": "C",
+  "text": "Thank you. What's your name?",
+  "voice": "af_nicole",
+  "speed": 0.9,
+  "lang": "en-us"
+ },
+ {
+  "id": "30",
+  "role": "N",
+  "text": "Three hundred years. Nobody had ever asked.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "31",
+  "role": "S",
+  "text": "I don't… have one.",
+  "voice": "bm_fable",
+  "speed": 0.95,
+  "lang": "en-gb"
+ },
+ {
+  "id": "32",
+  "role": "C",
+  "text": "Then I'll give you one. You swept the whole night away.",
+  "voice": "af_nicole",
+  "speed": 0.9,
+  "lang": "en-us"
+ },
+ {
+  "id": "33",
+  "role": "C",
+  "text": "I'll call you Sweep.",
+  "voice": "af_nicole",
+  "speed": 0.9,
+  "lang": "en-us"
+ },
+ {
+  "id": "34",
+  "role": "S",
+  "text": "Sweep.",
+  "voice": "bm_fable",
+  "speed": 0.95,
+  "lang": "en-gb"
+ },
+ {
+  "id": "35",
+  "role": "N",
+  "text": "It is not a grand name. Not like Iron Tusk, or Mister Fang.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb",
+  "asr": "It is not a grand name. Not like Iron Tusk, or Mr. Fang."
+ },
+ {
+  "id": "36",
+  "role": "N",
+  "text": "But it was given to me. And it was mine.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "37",
+  "role": "N",
+  "text": "The Great King came back, of course. He always does.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ },
+ {
+  "id": "38",
+  "role": "K",
+  "text": "You! Broom thing!",
+  "voice": "am_onyx",
+  "speed": 0.9,
+  "lang": "en-us"
+ },
+ {
+  "id": "39",
+  "role": "S",
+  "text": "Sweep, sir. My name is Sweep.",
+  "voice": "bm_fable",
+  "speed": 0.95,
+  "lang": "en-gb"
+ },
+ {
+  "id": "40",
+  "role": "N",
+  "text": "And every morning now, someone at the bottom of the mountain waves.",
+  "voice": "bm_fable",
+  "speed": 0.86,
+  "lang": "en-gb"
+ }
+]
