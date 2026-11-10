@@ -29,6 +29,7 @@ export async function init() {
   A.gate = { morning: B.gatePlate('morning'), dusk: B.gatePlate('dusk'), storm: B.gatePlate('storm'), dawn: B.gatePlate('dawn') };
   A.mtn = { morning: B.mountainPlate('morning'), dusk: B.mountainPlate('dusk'), storm: B.mountainPlate('storm') };
   A.pond = B.pondPlate(); A.pine = B.pinePlate(); A.village = B.villagePlate(); A.sky = B.skyPlate();
+  { const G = A.gate.dawn, c = document.createElement('canvas'); c.width = G.W; c.height = G.H; const x = c.getContext('2d'); x.drawImage(G.pc, 0, 0); x.globalCompositeOperation = 'destination-in'; const gr = x.createLinearGradient(0, 120, 0, 520); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,1)'); x.fillStyle = gr; x.fillRect(0, 0, G.W, G.H); A.gateFade = c; }
   A.strip = { morning: B.gatePlate('morning', 3800, 1300), storm: B.gatePlate('storm', 3800, 1300) };
 }
 // plate camera: draw a plate (and its emissive pair) so that plate point (fx, fy) lands on the screen centre at zoom z
@@ -146,7 +147,7 @@ SH.flee = (g, e, t) => {          // side tracking in the rain: the King and his
   g.fillStyle = '#22262e'; g.fillRect(0, 880, W, 200);
   g.strokeStyle = rgba('#5a6070', .6); g.lineWidth = 4; for (let i = 0; i < 8; i++) { const gx = ((i * 330 - x) % 2640 + 2640) % 2640 - 200; g.beginPath(); g.moveTo(gx, 920 + (i % 3) * 30); g.lineTo(gx + 140, 920 + (i % 3) * 30); g.stroke(); }
   const fk = () => king(g, e, 1250 + Math.sin(lt * .7) * 60, 1000, 1.05, P, { t: tw(t), run: tw(t) * 2.4, arms: 'up', roar: .9, f: 1, rim: P.rim }); fk(); stamp(e, fk);
-  for (let i = 0; i < 9; i++) { const fd = () => demon(g, e, 160 + i * 110 + Math.sin(i * 2 + lt) * 30, 930 + (i % 3) * 22, 1.5, i % 4, tw(t) * 3 + i * .3, P, { f: 1, rim: P.rim }); fd(); stamp(e, fd); }
+  for (let i = 0; i < 9; i++) { const fd = () => demon(g, e, 80 + i * 125 + Math.sin(i * 2 + lt) * 30, 960 + (i % 3) * 26, 2.3, i % 4, tw(t) * 3 + i * .3, P, { f: 1, rim: P.rim }); fd(); stamp(e, fd); }
   speedLines(g, Math.floor(t * 12), { type: 'h', a: .18, col: '#c8f4ff', n: 30 });
   rain(g, e, Math.floor(t * 24) % 3, { n: 260, a: .45, ang: .4 });
   return { track: t > T0.flee && t < T0.flee + .3 ? 1 - (t - T0.flee) / .3 : 0 };
@@ -225,7 +226,7 @@ SH.name = (g, e, t) => {          // two-shot at the village, lip flaps; then a 
     const fn = () => imp(g, e, 980, 1330, 18 * (1 + k * .04), P, { t: tw(t), noBroom: true, look: [-.6, -.3], mouth: speaking(t, 'S') ? flap(t) : 'smile', blink: blinkAt(t, 9), brow: -.2, glint: k > .5 }); fn();
     return {};
   }
-  for (let i = 0; i < 5; i++) villager(g, e, 220 + i * 120, 770, 2.6, P, i, t);
+  for (let i = 0; i < 4; i++) { const fv = () => villager(g, e, 140 + i * 150, 900 - (i % 2) * 20, 4.2, P, i, t); fv(); }
   const fc = () => child(g, e, 760, 960, 7, P, { t: tw(t), arms: t > T.name - 6 && t < T.name + 3 ? 'hold' : 'down', look: [1, -.5], mouth: speaking(t, 'C') ? flap(t) : 0, smile: !speaking(t, 'C'), blush: named, blink: blinkAt(t, 10) }); fc(); stamp(e, fc);
   const fi = () => imp(g, e, 1220, 960, 4.4, P, { t: tw(t), f: -1, broom: .15, look: [-1, named ? -1 : .5], mouth: speaking(t, 'S') ? flap(t) : named ? 'smile' : 0, blink: blinkAt(t, 11), brow: named ? .3 : -.6 }); fi(); stamp(e, fi);
 };
@@ -241,9 +242,9 @@ SH.sign = (g, e, t) => {          // a slow pan up from the gate into the mornin
   const P = PAL.dawn, lt = t - T0.sign, up = ss(seg(lt, 0, 9));
   const yoff = lerp(-1320, 0, up);
   g.drawImage(A.sky.pc, 0, yoff); e.drawImage(A.sky.ec, 0, yoff);
-  const G = A.gate.dawn; g.drawImage(G.pc, 0, 0, G.W, G.H, -140, yoff + 1320 + 180 - 0, G.W * .95, G.H * .95);
+  const G = A.gate.dawn; g.drawImage(A.gateFade, 0, 0, G.W, G.H, -140, yoff + 1320 + 180 - 0, G.W * .95, G.H * .95);
   const fi = () => imp(g, e, 1240, yoff + 1320 + 180 + G.gy * .95, 2.2, P, { t: tw(t), broom: .3, f: -1, look: [-1, -1], mouth: 'smile' }); fi();
-  if (t > T.wave) { child(g, e, 380, yoff + 2400, 1.2, P, { t: tw(t), arms: 'wave' }); }
+  child(g, e, 1140, yoff + 1320 + 180 + G.gy * .95, 2.4, P, { t: tw(t), arms: t > T.wave - 6 ? 'wave' : 'down', f: 1 });
   if (t > T.seal) {               // freeze-frame name card
     const k = ss(seg(t, T.seal, T.seal + .3));
     g.save(); g.globalAlpha = k; g.font = 'italic 900 150px Kanit'; g.textAlign = 'center'; g.textBaseline = 'middle';

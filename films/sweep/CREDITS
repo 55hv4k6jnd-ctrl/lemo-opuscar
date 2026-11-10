@@ -1,0 +1,14 @@
+SWEEP — a tale from the mountain
+Style: 80s Cel Anime (Lemo-Opuscar style library). Story, characters, picture, score and sound design are original;
+no characters, names, scenes, designs or music from any existing film.
+
+Picture: drawn entirely in code (Canvas2D cels and painted plates → WebGL2 tape + CRT pass, adapted from the library's
+80s Cel Anime engine: cel.js, post.js, fx.js). No generated images, no stock footage.
+
+Voices: Kokoro TTS (kokoro-onnx, Apache-2.0 model weights), voices bm_fable, am_onyx, af_nicole; pitch-shifted per character.
+  (ElevenLabs takes can replace them line for line: SCRIPT_ELEVENLABS.md)
+Music and foley: synthesised in code (numpy), original.
+
+Fonts (SIL Open Font License 1.1; licence texts in fonts/):
+  Kanit — Cadson Demak
+  Barlow Semi Condensed — Jeremy Tribby
