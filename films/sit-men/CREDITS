@@ -1,0 +1,10 @@
+SIT MEN — an ink-wash horror short
+Style: Chinese Ink Wash (Lemo-Opuscar style library). Story, characters, picture, score and sound design are original.
+No characters, scenes, designs or music from any existing film.
+
+Picture: drawn entirely in code (Canvas2D brush engine → WebGL2 rice-paper compositor, adapted from the library's
+Chinese Ink Wash engine: ink.js, comp.js, land.js, seal.js, subs.js). No generated images, no stock footage.
+Music and sound: synthesised in code (numpy): bell, drone, xiao-like flute, Karplus–Strong plucked string, drums, foley.
+
+Fonts (SIL Open Font License 1.1; licence text in fonts/):
+  Cormorant Garamond / Cormorant SC — Christian Thalmann
