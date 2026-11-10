@@ -73,4 +73,4 @@ Text in *[brackets]* is a delivery note: don't paste it (or, with Eleven v3, pas
 
 ---
 
-About 370 words in all: 40 lines: N (narrator) 28, S (Sweep) 4, K (King) 3, C (child) 5.
+About 340 words in all, 40 lines: N (narrator) 28, S (Sweep) 4, K (King) 3, C (child) 5.
