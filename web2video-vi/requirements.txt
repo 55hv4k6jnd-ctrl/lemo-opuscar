@@ -1,0 +1,6 @@
+anthropic>=0.80
+pydantic>=2
+trafilatura>=1.6
+edge-tts>=7.0
+numpy
+pillow>=10
