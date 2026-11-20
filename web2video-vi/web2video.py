@@ -271,6 +271,31 @@ def make_pad(dur: float, seed: int = 7) -> np.ndarray:
     return out.astype(np.float32)
 
 
+def build_mix(vox: np.ndarray, music: str | None, music_vol: float,
+              under: np.ndarray | None = None) -> np.ndarray:
+    """Voice on top; music bed (file, generated pad, or 'none') ducked under the voice.
+    `under` is an extra track (e.g. film-clip sound) added as is."""
+    n = len(vox)
+    if music == "none":
+        bed = np.zeros(n, np.float32)
+    elif music:
+        m = read_audio(Path(music))
+        reps = int(math.ceil(n / max(1, len(m))))
+        bed = np.tile(m, reps + 1)[:n]
+        bed /= max(1e-6, np.abs(bed).max())
+    else:
+        bed = make_pad(n / SR + 1)[:n]
+    env = np.abs(vox if under is None else vox + under)
+    win = int(0.25 * SR)
+    env = np.convolve(env, np.ones(win) / win, mode="same")
+    duck = 1 - 0.6 * np.clip(env / (env.max() * 0.15 + 1e-6), 0, 1)
+    fade = np.minimum(1, np.arange(n) / (2 * SR)) * np.minimum(1, (n - np.arange(n)) / (3 * SR))
+    mix = vox / max(1e-6, np.abs(vox).max()) * 0.9 + bed * music_vol * duck * fade
+    if under is not None:
+        mix = mix + under
+    return mix
+
+
 def write_wav(path: Path, x: np.ndarray):
     x = np.clip(x, -1, 1)
     pcm = (x * 32767).astype(np.int16)
@@ -436,6 +461,8 @@ def parse_number(s: str):
         return None
     num = m.group(1)
     pre, suf = s[:m.start()], s[m.end():]
+    if re.match(r"\s*[-–]\s*\d", suf):                # a range like 7-8: show as is
+        return None
     if re.fullmatch(r"\d{1,3}(\.\d{3})+", num):        # 60.000
         return float(num.replace(".", "")), 0, pre, suf, "."
     if re.fullmatch(r"\d+,\d+", num):                  # 3,5
@@ -655,22 +682,7 @@ def produce(script: Script, article: dict, outdir: Path, voice: str, rate: str, 
     for t0, a in voice_parts:
         s = int(t0 * SR)
         vox[s:s + len(a)] += a[: max(0, n - s)]
-    if music == "none":
-        bed = np.zeros(n, np.float32)
-    elif music:
-        m = read_audio(Path(music))
-        reps = int(math.ceil(n / max(1, len(m))))
-        bed = np.tile(m, reps + 1)[:n]
-        bed /= max(1e-6, np.abs(bed).max())
-    else:
-        bed = make_pad(n / SR + 1)[:n]
-    # duck the bed under the voice
-    env = np.abs(vox)
-    win = int(0.25 * SR)
-    env = np.convolve(env, np.ones(win) / win, mode="same")
-    duck = 1 - 0.6 * np.clip(env / (env.max() * 0.15 + 1e-6), 0, 1)
-    fade = np.minimum(1, np.arange(n) / (2 * SR)) * np.minimum(1, (n - np.arange(n)) / (3 * SR))
-    mix = vox / max(1e-6, np.abs(vox).max()) * 0.9 + bed * music_vol * duck * fade
+    mix = build_mix(vox, music, music_vol)
     write_wav(tmp / "mix.wav", mix)
 
     # ---- picture
